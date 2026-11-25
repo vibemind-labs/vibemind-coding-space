@@ -127,7 +127,8 @@ WORKDIR /workspace
 
 # Copy entrypoint script (build context is project root)
 COPY infra/docker/sandbox-entrypoint.sh /usr/local/bin/sandbox-entrypoint.sh
-RUN chmod +x /usr/local/bin/sandbox-entrypoint.sh
+# Windows checkouts may carry CRLF; without this the shebang breaks ("no such file").
+RUN sed -i 's/\r$//' /usr/local/bin/sandbox-entrypoint.sh && chmod +x /usr/local/bin/sandbox-entrypoint.sh
 
 # Healthcheck tries the app dev server port and common alternatives
 # Relaxed healthcheck: emulator + npm install can take 2+ minutes
