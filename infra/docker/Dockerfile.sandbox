@@ -98,36 +98,15 @@ RUN npm install -g \
     expo-cli \
     @expo/ngrok
 
-# Install Java 17 + Android SDK (for React Native emulator preview)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    openjdk-17-jdk-headless \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
-
+# Java 17 + Android SDK (for React Native emulator preview).
+# MIT_ANDROID=0 skips it: the image stays several GB smaller and the
+# web/Node preview over noVNC works the same.
+#   docker build --build-arg MIT_ANDROID=0 -t coding-engine/sandbox:latest -f infra/docker/Dockerfile.sandbox .
+ARG MIT_ANDROID=1
 ENV ANDROID_HOME=/opt/android-sdk
 ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/emulator:${PATH}"
 
-# Download Android SDK command-line tools
-RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
-    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdtools.zip && \
-    unzip -q /tmp/cmdtools.zip -d ${ANDROID_HOME}/cmdline-tools && \
-    mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest && \
-    rm /tmp/cmdtools.zip
-
-# Accept licenses + install minimal SDK (emulator + API 34 x86_64)
-RUN yes | sdkmanager --licenses > /dev/null 2>&1 && \
-    sdkmanager "platform-tools" "emulator" \
-    "platforms;android-34" \
-    "system-images;android-34;google_apis;x86_64"
-
-# Create AVD (Android Virtual Device) — Pixel 6 skin
-RUN echo "no" | avdmanager create avd \
-    -n sandbox -k "system-images;android-34;google_apis;x86_64" \
-    --device "pixel_6" --force
-
-# Download Expo Go APK (for loading RN projects in emulator)
-RUN wget -q "https://d1ahtucjixef4r.cloudfront.net/Exponent-2.32.13.apk" \
-    -O /opt/expo-go.apk 2>/dev/null || echo "Expo Go APK download skipped"
+RUN if [ "$MIT_ANDROID" = "1" ]; then       apt-get update && apt-get install -y --no-install-recommends openjdk-17-jdk-headless unzip       && rm -rf /var/lib/apt/lists/*       && mkdir -p ${ANDROID_HOME}/cmdline-tools       && wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdtools.zip       && unzip -q /tmp/cmdtools.zip -d ${ANDROID_HOME}/cmdline-tools       && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest       && rm /tmp/cmdtools.zip       && (yes | sdkmanager --licenses > /dev/null 2>&1)       && sdkmanager "platform-tools" "emulator" "platforms;android-34" "system-images;android-34;google_apis;x86_64"       && echo "no" | avdmanager create avd -n sandbox -k "system-images;android-34;google_apis;x86_64" --device "pixel_6" --force       && (wget -q "https://d1ahtucjixef4r.cloudfront.net/Exponent-2.32.13.apk" -O /opt/expo-go.apk || echo "Expo Go APK download skipped");     else echo "Android SDK skipped (MIT_ANDROID=$MIT_ANDROID)"; fi
 
 # Set display for Xvfb (Electron headless + Android Emulator)
 ENV DISPLAY=:99

@@ -904,8 +904,12 @@ class SoMBridge:
         cmd = [
             "docker", "run", "-d",
             "--name", container_name,
-            "-v", f"{self.output_dir}:/app",
-            "-p", f"{self.config.vnc_port}:6080",
+            # The image runs noVNC on NOVNC_PORT=6090 and the entrypoint looks
+            # for the project in /workspace/app (Dockerfile.sandbox,
+            # sandbox-entrypoint.sh); /app and 6080 left the preview dark.
+            "-v", f"{self.output_dir}:/workspace/app",
+            "-w", "/workspace/app",
+            "-p", f"{self.config.vnc_port}:6090",
             "-p", f"{self.config.app_port}:5173",
             "-p", f"{self.config.app_port + 1}:8000",
             "-e", "ENABLE_VNC=true",
