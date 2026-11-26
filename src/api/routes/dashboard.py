@@ -497,6 +497,15 @@ async def stop_project_container(request: ProjectStopRequest) -> SuccessResponse
 
 
 @router.get("/project/status")
+def output_base_dir() -> Path:
+    """Where generated projects live: ENGINE_OUTPUT_BASE, default /app/output (the container mount).
+
+    Lets the API run outside the container, e.g. next to VibeMind's Project Space whose runs
+    live in its own work folder.
+    """
+    return Path(os.environ.get("ENGINE_OUTPUT_BASE") or "/app/output")
+
+
 def _load_epics_from_files(project_path: str) -> list:
     """Load epic info from task files on disk. Works even when generation is idle."""
     import json as _json
@@ -637,7 +646,7 @@ async def get_project_status(projectId: str = Query(..., description="Project ID
         }
 
     # Fallback 1: Check subprocess generation via .generation_status.json + log file
-    output_base = Path("/app/output")
+    output_base = output_base_dir()
     output_dir = output_base / projectId
     if not output_dir.exists() and output_base.exists():
         # Try finding by prefix match

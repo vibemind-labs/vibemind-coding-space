@@ -143,6 +143,27 @@ app.add_middleware(
 )
 
 
+# Read-only switch (ENGINE_API_NUR_LESEN, default off).
+# When the API only backs the dashboard view (e.g. inside VibeMind's Project Space), runs must be
+# started elsewhere (the Project Space service owns budget, acceptance and keys). With the switch
+# on, every HTTP method except GET/HEAD/OPTIONS is refused with 403; WebSockets are unaffected.
+_READ_ONLY_METHODS = ("GET", "HEAD", "OPTIONS")
+
+
+def api_read_only() -> bool:
+    return os.environ.get("ENGINE_API_NUR_LESEN", "").strip().lower() in {"1", "true", "yes", "ja", "an"}
+
+
+@app.middleware("http")
+async def read_only_switch(request: Request, call_next):
+    if api_read_only() and request.method.upper() not in _READ_ONLY_METHODS:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "read_only", "switch": "ENGINE_API_NUR_LESEN"},
+        )
+    return await call_next(request)
+
+
 # Exception handlers
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
